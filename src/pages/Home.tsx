@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
-import { AlertCircle, ArrowUpRight, CalendarClock, IndianRupee, MessageCircle, Plus, Send, TrendingUp, Wrench } from "lucide-react";
+import { AlertCircle, CalendarClock, IndianRupee, MessageCircle, Send, Wrench } from "lucide-react";
 import { useLive } from "../state/data";
 import { currentPeriod, dateLabel, initials, money, periodLabel, shiftPeriod, todayISO, tone, waLink } from "../lib/format";
 import { daysUntil, rentRows, type LeaseRow } from "../lib/rent";
@@ -58,20 +58,16 @@ export default function HomePage() {
   }
 
   return (
-    <div className="page dashboard">
-      <div className="page-head dashboard-head">
+    <div className="page">
+      <div className="page-head">
         <div>
-          <span className="eyebrow">Your workspace · {periodLabel(period)}</span>
+          <span className="eyebrow">{periodLabel(period)}</span>
           <h1 className="display">{greeting()}.</h1>
-          <p className="dashboard-intro">A little clarity for everything you look after.</p>
         </div>
-        {(live.role === "owner" || live.role === "manager") && <button className="btn primary" onClick={() => openAdd("payment")}><Plus size={17} /> Record payment</button>}
       </div>
 
       <section className="home-grid">
-        <div className="card collection-card">
-          <div className="collection-heading"><span className="eyebrow">This month's rent</span><span className="collection-status"><span /> Collection overview</span></div>
-          <div className="ring-card">
+        <div className="card ring-card">
           <Ring value={expected ? collected / expected : 0}>
             <span className="eyebrow">Collected</span>
             <strong className="mono">{expected ? Math.round((collected / expected) * 100) : 0}%</strong>
@@ -81,15 +77,13 @@ export default function HomePage() {
             <div><span className="eyebrow">Outstanding</span><span className="mono big">{money(expected - collected)}</span></div>
             <div><span className="eyebrow">Expected</span><span className="mono">{money(expected)}</span></div>
           </div>
-          </div>
-          <div className="collection-footer"><span>{rows.filter((r) => r.status === "paid").length} of {rows.length} leases fully paid</span><Link to="/app/payments">View payments <ArrowUpRight size={15} /></Link></div>
         </div>
 
         <div className="tiles">
-          <Link to="/app/reports" className="tile"><span className="metric-label"><IndianRupee size={16} /> Spent this month</span><span className="mono big">{money(spent)}</span><small className="muted">Explore expenses <ArrowUpRight size={13} /></small></Link>
-          <div className="tile"><span className="metric-label"><TrendingUp size={16} /> Net this month</span><span className={`mono big ${receivedThisMonth - spent < 0 ? "neg" : ""}`}>{money(receivedThisMonth - spent)}</span><small className="muted">Rent minus expenses</small></div>
-          <Link to="/app/tasks" className="tile"><span className="metric-label"><Wrench size={16} /> Open tasks</span><span className="mono big">{openTasks.length}</span><small className="muted">{openTasks.filter((t) => t.priority === "urgent" || t.priority === "high").length} high priority <ArrowUpRight size={13} /></small></Link>
-          <Link to="/app/tenants" className="tile"><span className="metric-label"><CalendarClock size={16} /> Leases ending</span><span className="mono big">{ending.length}</span><small className="muted">Next 60 days <ArrowUpRight size={13} /></small></Link>
+          <div className="tile"><span className="eyebrow">Spent this month</span><span className="mono big">{money(spent)}</span></div>
+          <div className="tile"><span className="eyebrow">Net this month</span><span className={`mono big ${receivedThisMonth - spent < 0 ? "neg" : ""}`}>{money(receivedThisMonth - spent)}</span><small className="muted">Rent minus expenses</small></div>
+          <Link to="/app/tasks" className="tile"><span className="eyebrow">Open tasks</span><span className="mono big">{openTasks.length}</span><small className="muted">{openTasks.filter((t) => t.priority === "urgent" || t.priority === "high").length} high priority</small></Link>
+          <div className="tile"><span className="eyebrow">Leases ending</span><span className="mono big">{ending.length}</span><small className="muted">Next 60 days</small></div>
         </div>
       </section>
 

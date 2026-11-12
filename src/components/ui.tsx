@@ -1,8 +1,5 @@
-import { dismissSheet, swipeDestination } from "../lib/physics";
-import { useDialog } from "../lib/dialog";
-import { useAppReducedMotion } from "../lib/motion";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { AnimatePresence, animate, motion, useAnimationControls, useDragControls, useMotionValue, useTransform } from "motion/react";
+import { AnimatePresence, animate, motion, useAnimationControls, useDragControls, useMotionValue, useReducedMotion, useTransform } from "motion/react";
 import { haptic } from "../lib/touch";
 import { CheckCircle2, Database, X } from "lucide-react";
 import type { RentStatus } from "../lib/rent";
@@ -14,27 +11,40 @@ export const SPRING = { type: "spring", stiffness: 380, damping: 36, mass: 0.9 }
 export const SOFT_SPRING = { type: "spring", stiffness: 260, damping: 30 } as const;
 /** Telegram-iOS TouchEffect "lift off": the bouncy settle of a glass lens landing on its new tab. */
 export const LENS_SPRING = { type: "spring", stiffness: 560, damping: 34, mass: 0.9 } as const;
-/** A firmly damped spring: tracks a gesture without an extended bouncing tail. */
+/** iOS navigation push/pop: a short tween on UIKit's curve, so a screen is settled in ~0.28s instead of a long spring tail. */
 export const IOS_EASE = [0.32, 0.72, 0, 1] as const;
-export const NAV_SPRING = { type: "spring", stiffness: 420, damping: 40, mass: 0.9 } as const;
+export const NAV_SPRING = { type: "tween", duration: 0.34, ease: IOS_EASE } as const;
 /** Leaving is quicker than arriving, so the next screen is never waiting on the old one. */
 export const NAV_EXIT = { type: "tween", duration: 0.16, ease: [0.4, 0, 1, 1] } as const;
 
 /* ------------------------------------------------------------------ sheet */
 
+// Counts open sheets so an exiting sheet can't release the scroll lock a newly opened one still needs.
+let scrollLocks = 0;
+
 export function Sheet({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
-  const reduce = useAppReducedMotion();
+  const reduce = useReducedMotion();
   const drag = useDragControls();
-  const dialogRef = useDialog(true, onClose);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
+    document.addEventListener("keydown", onKey);
+    if (scrollLocks++ === 0) document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      if (--scrollLocks === 0) document.body.style.overflow = "";
+    };
+  }, []);
   return (
     <motion.div className="sheet-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
-      <motion.div ref={dialogRef} tabIndex={-1} className={`sheet ${wide ? "sheet-wide" : ""}`} role="dialog" aria-modal="true" aria-label={title}
+      <motion.div className={`sheet ${wide ? "sheet-wide" : ""}`} role="dialog" aria-modal="true" aria-label={title}
         initial={reduce ? { opacity: 0 } : { y: "100%", opacity: 1 }} animate={{ y: 0, opacity: 1 }}
         exit={reduce ? { opacity: 0, transition: { duration: 0.12 } } : { y: "105%", opacity: 1, transition: { duration: 0.22, ease: [0.4, 0, 1, 1] } }}
-        transition={reduce ? { duration: 0.15 } : { type: "spring", stiffness: 420, damping: 40, mass: 0.9 }}
+        transition={reduce ? { duration: 0.15 } : { type: "tween", duration: 0.34, ease: IOS_EASE }}
         drag={reduce ? false : "y"} dragControls={drag} dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: 0.04, bottom: 0.7 }}
-        dragListener={false} onDragEnd={(_, info) => dismissSheet(info.offset.y, info.velocity.y) && onClose()}>
+        dragListener={false} onDragEnd={(_, info) => (info.offset.y > 110 || info.velocity.y > 600) && onClose()}>
         <div className="sheet-drag" onPointerDown={(e) => drag.start(e)} style={{ touchAction: "none" }}>
           <div className="sheet-grab" aria-hidden />
           <header className="sheet-head">
@@ -123,7 +133,7 @@ export function Empty({ icon, title, children }: { icon?: ReactNode; title: stri
 export function CountUp({ value, format }: { value: number; format: (n: number) => string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const prev = useRef(0);
-  const reduce = useAppReducedMotion();
+  const reduce = useReducedMotion();
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -143,7 +153,6 @@ export function CountUp({ value, format }: { value: number; format: (n: number) 
 }
 
 export function Ring({ value, size = 172, stroke = 14, children }: { value: number; size?: number; stroke?: number; children?: ReactNode }) {
-  const reduce = useAppReducedMotion();
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const v = Math.max(0, Math.min(1, value));
@@ -161,10 +170,10 @@ export function Ring({ value, size = 172, stroke = 14, children }: { value: numb
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" style={{ stroke: "var(--ring-track)" }} strokeWidth={stroke} />
         <motion.circle cx={size / 2} cy={size / 2} r={r} fill="none" style={{ stroke: "var(--accent)" }} strokeOpacity={0.35} strokeWidth={stroke}
           strokeLinecap="round" strokeDasharray={c} filter={`url(#rf${gid})`} transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          initial={reduce ? false : { strokeDashoffset: c }} animate={{ strokeDashoffset: c * (1 - v) }} transition={{ duration: reduce ? 0 : 0.7, ease: [0.2, 0.8, 0.2, 1] }} />
+          initial={{ strokeDashoffset: c }} animate={{ strokeDashoffset: c * (1 - v) }} transition={{ duration: 0.7, ease: [0.2, 0.8, 0.2, 1] }} />
         <motion.circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={`url(#rg${gid})`} strokeWidth={stroke}
           strokeLinecap="round" strokeDasharray={c} transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          initial={reduce ? false : { strokeDashoffset: c }} animate={{ strokeDashoffset: c * (1 - v) }} transition={{ duration: reduce ? 0 : 0.7, ease: [0.2, 0.8, 0.2, 1] }} />
+          initial={{ strokeDashoffset: c }} animate={{ strokeDashoffset: c * (1 - v) }} transition={{ duration: 0.7, ease: [0.2, 0.8, 0.2, 1] }} />
         <circle cx={size / 2} cy={size / 2} r={r - stroke / 2 - 4} fill="none" style={{ stroke: "var(--glass-spec)" }} strokeOpacity={0.5} strokeWidth={1} />
       </svg>
       <div className="ring-center">{children}</div>
@@ -332,19 +341,18 @@ export type SwipeAction = { label: string; icon: ReactNode; tone: "ok" | "accent
  * Rows stay plain, tappable and keyboard-reachable; the actions are also reachable as normal buttons when revealed.
  */
 export function SwipeRow({ actions, children, className }: { actions: SwipeAction[]; children: ReactNode; className?: string }) {
-  const reduce = useAppReducedMotion();
+  const reduce = useReducedMotion();
   const controls = useAnimationControls();
   const x = useMotionValue(0);
   // The actions only take up the space the row has uncovered, so nothing shows through the glass row at rest.
   const revealed = useTransform(x, (v) => Math.max(0, -v));
   const [open, setOpen] = useState(false);
-  useEffect(() => { if (reduce) { x.set(0); setOpen(false); } }, [reduce, x]);
   const dragged = useRef(false);
   const width = actions.length * 76;
-  const settle = (to: number) => { controls.start({ x: to }, reduce ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 42 }); setOpen(to !== 0); };
+  const settle = (to: number) => { controls.start({ x: to }, { type: "spring", stiffness: 520, damping: 42 }); setOpen(to !== 0); };
   const fire = (a: SwipeAction) => { settle(0); if (a.href) window.open(a.href, "_blank", "noopener"); else a.onAction(); };
   return (
-    <li className={`swipe ${reduce ? "motion-static" : ""} ${open ? "open" : ""} ${className ?? ""}`}>
+    <li className={`swipe ${open ? "open" : ""} ${className ?? ""}`}>
       <motion.div className="swipe-actions" style={{ width: revealed }} aria-hidden={!open}>
         {actions.map((a) => (
           <button key={a.label} type="button" tabIndex={open ? 0 : -1} className={`swipe-act tone-${a.tone}`} onClick={() => fire(a)}>
@@ -359,7 +367,7 @@ export function SwipeRow({ actions, children, className }: { actions: SwipeActio
           const at = x.get();
           // Full swipe: pulled well past the actions, or flicked hard once they are already uncovered.
           if (at < -width - 40 || (info.velocity.x < -1400 && at < -width * 0.8)) { haptic(12); return fire(actions[0]); }
-          settle(swipeDestination(at, info.velocity.x, width));
+          settle(at < -width / 2 || info.velocity.x < -400 ? -width : 0);
         }}
         onClickCapture={(e) => {
           // The click that ends a drag is not a tap on the row's contents.

@@ -1,8 +1,6 @@
-import { useDialog } from "../lib/dialog";
-import { useAppReducedMotion } from "../lib/motion";
 import { Suspense, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { NavLink, useLocation, useNavigate, useOutlet } from "react-router-dom";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   BellRing, Building2, ChevronLeft, CreditCard, FileText, FolderOpen, Hammer, Home, IndianRupee, Landmark, LineChart, Plus, Receipt, Settings,
   Sparkles, Users, UsersRound, Wallet, Wrench, X,
@@ -91,11 +89,10 @@ function useScrollInfo() {
 export function AppShell() {
   const { workspace, role, demo, reminders, tasks } = useData();
   const [menu, setMenu] = useState(false);
-  const quickRef = useDialog(menu, () => setMenu(false));
   const [add, setAdd] = useState<AddKind | null>(null);
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const reduce = useAppReducedMotion();
+  const reduce = useReducedMotion();
   const close = () => setAdd(null);
   const canWrite = role !== "viewer";
   const pending = reminders.filter((r) => r.status === "pending").length;
@@ -174,9 +171,9 @@ export function AppShell() {
             <motion.div key={pathname} className="route" custom={dir}
               variants={{
                 // Tab switches (d = 0) are a quick cross-fade, like iOS; pushes slide in, pops slide back.
-                enter: (d: number) => reduce ? { opacity: 0 } : d === 0 ? { opacity: 0, y: 5 } : { opacity: 1, x: d > 0 ? 28 : -20 },
-                center: (d: number) => ({ opacity: 1, x: 0, y: 0, scale: 1, transition: reduce ? { duration: 0.12 } : d === 0 ? { duration: 0.2, ease: BUTTER } : NAV_SPRING }),
-                exit: (d: number) => reduce || d === 0 ? { opacity: 0, transition: { duration: 0.12, ease: "easeOut" } } : { opacity: 0, x: d > 0 ? -16 : 24, transition: NAV_EXIT },
+                enter: (d: number) => reduce ? { opacity: 0 } : d === 0 ? { opacity: 0, y: 10, scale: 0.995 } : { opacity: 1, x: d > 0 ? "32%" : "-22%" },
+                center: (d: number) => ({ opacity: 1, x: 0, y: 0, scale: 1, transition: reduce ? { duration: 0.12 } : d === 0 ? { duration: 0.34, ease: BUTTER } : NAV_SPRING }),
+                exit: (d: number) => reduce || d === 0 ? { opacity: 0, transition: { duration: 0.12, ease: "easeOut" } } : { opacity: 0, x: d > 0 ? "-14%" : "26%", transition: NAV_EXIT },
               }}
               initial="enter" animate="center" exit="exit">
               {outlet}
@@ -194,7 +191,7 @@ export function AppShell() {
         {menu && (
           <motion.div className="sheet-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setMenu(false)}
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }}>
-            <motion.div ref={quickRef} tabIndex={-1} className="quick" role="dialog" aria-modal="true" aria-label="Quick add"
+            <motion.div className="quick" role="dialog" aria-modal="true" aria-label="Quick add"
               style={{ transformOrigin: "100% 100%" }}
               initial={reduce ? { opacity: 0 } : { y: 24, opacity: 0, scale: 0.82 }} animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={reduce ? { opacity: 0 } : { y: 16, opacity: 0, scale: 0.9, transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }} transition={SPRING}>
@@ -240,7 +237,7 @@ export function AppShell() {
  */
 function TabBar({ pathname, badges, onNavigate }: { pathname: string; badges: Record<string, number>; onNavigate: (to: string) => void }) {
   const bar = useRef<HTMLElement>(null);
-  const reduce = useAppReducedMotion();
+  const reduce = useReducedMotion();
   const active = Math.max(0, NAV.findIndex((n) => isActive(pathname, n)));
   const onTab = NAV.some((n) => isActive(pathname, n));
   const [scrub, setScrub] = useState<{ x: number; moved: boolean } | null>(null);

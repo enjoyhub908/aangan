@@ -1,6 +1,5 @@
-import { useAppReducedMotion } from "../lib/motion";
 import { Fragment, useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowUp, Copy, RotateCcw, Sparkles, Square } from "lucide-react";
 import { Jaali } from "../components/ui";
 import { haptic } from "../lib/touch";
@@ -49,7 +48,7 @@ export default function AssistantPage() {
   const [error, setError] = useState("");
   const abort = useRef<AbortController | null>(null);
   const end = useRef<HTMLDivElement>(null);
-  const reduce = useAppReducedMotion();
+  const reduce = useReducedMotion();
   // Telegram turns its gradient wallpaper a step on every message sent.
   const [turn, setTurn] = useState(0);
   // Bubbles already on screen when the page opens appear in place; only new ones fly in.

@@ -1,4 +1,4 @@
-import { getPrefs, motionReduced } from "./theme";
+import { getPrefs } from "./theme";
 /**
  * Telegram-style touch feedback for glass controls.
  *
@@ -13,16 +13,11 @@ export function installTouchEffect() {
   if (typeof window === "undefined") return;
   let el: HTMLElement | null = null;
   let start = { x: 0, y: 0 };
-  let pointer: number | null = null;
-  let rect: DOMRect | null = null;
   let raf = 0;
   let last: PointerEvent | null = null;
 
   const release = () => {
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
-    pointer = null;
-    rect = null;
-    last = null;
     if (!el) return;
     el.classList.remove("is-pressed");
     el.style.setProperty("--sx", "0");
@@ -30,12 +25,12 @@ export function installTouchEffect() {
     el = null;
   };
 
-  // Measure once on press; coalesce pointer updates to a single write per frame.
+  // pointermove can fire faster than the screen refreshes; measuring and styling once per frame keeps the press smooth.
   const apply = () => {
     raf = 0;
     const e = last;
-    if (!e || !el || !rect) return;
-    const r = rect;
+    if (!e || !el) return;
+    const r = el.getBoundingClientRect();
     el.style.setProperty("--px", `${((e.clientX - r.left) / r.width) * 100}%`);
     el.style.setProperty("--py", `${((e.clientY - r.top) / r.height) * 100}%`);
     // Rubber-band stretch toward the finger, capped so it stays a hint.
@@ -47,31 +42,26 @@ export function installTouchEffect() {
     if (e.clientX < r.left - 60 || e.clientX > r.right + 60 || e.clientY < r.top - 60 || e.clientY > r.bottom + 60) release();
   };
   const track = (e: PointerEvent) => {
-    if (!el || e.pointerId !== pointer) return;
-    if (motionReduced()) return;
+    if (!el) return;
     last = e;
     if (!raf) raf = requestAnimationFrame(apply);
   };
 
   document.addEventListener("pointerdown", (e) => {
-    if (e.button !== 0 || !e.isPrimary) return;
+    if (e.button !== 0) return;
     const hit = (e.target as Element | null)?.closest?.(SELECTOR) as HTMLElement | null;
     if (!hit || (hit as HTMLButtonElement).disabled) return;
     release();
     el = hit;
-    pointer = e.pointerId;
-    rect = hit.getBoundingClientRect();
     start = { x: e.clientX, y: e.clientY };
     el.classList.add("is-pressed");
     last = e;
-    if (!motionReduced()) apply();
+    apply();
   }, { passive: true });
   document.addEventListener("pointermove", track, { passive: true });
-  document.addEventListener("pointerup", (e) => { if (e.pointerId === pointer) release(); }, { passive: true });
-  document.addEventListener("pointercancel", (e) => { if (e.pointerId === pointer) release(); }, { passive: true });
+  document.addEventListener("pointerup", release, { passive: true });
+  document.addEventListener("pointercancel", release, { passive: true });
   window.addEventListener("blur", release);
-  window.addEventListener("resize", release, { passive: true });
-  document.addEventListener("visibilitychange", () => { if (document.hidden) release(); });
   // Scrolling is not a tap: drop the highlight as soon as the page moves.
   window.addEventListener("scroll", release, { passive: true, capture: true });
 }

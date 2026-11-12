@@ -30,12 +30,16 @@ function load(): OutboxItem[] {
     return [];
   }
 }
-function save(next: OutboxItem[], requirePersistence = false) {
-  try { localStorage.setItem(KEY, JSON.stringify(next)); } catch {
-    if (requirePersistence) throw new Error("Couldn't save on this device. Free up browser storage and try again.");
+function save(next: OutboxItem[]) {
+  const previous = items;
+  try {
+    localStorage.setItem(KEY, JSON.stringify(next));
+    items = next;
+    listeners.forEach((l) => l());
+  } catch {
+    items = previous;
+    throw new Error("Couldn't save on this device");
   }
-  items = next;
-  listeners.forEach((l) => l());
 }
 if (typeof window !== "undefined") {
   window.addEventListener("storage", (e) => { if (e.key === KEY) { items = load(); listeners.forEach((l) => l()); } });
@@ -62,7 +66,7 @@ export async function enqueue(kind: OutboxKind, label: string, payload: Record<s
   const { data } = await supabase.auth.getSession();
   const user = data.session?.user.id;
   if (!user) throw new Error("Your session has ended. Sign in again to save this.");
-  save([...items, { id: crypto.randomUUID(), kind, label, payload, created_at: new Date().toISOString(), user }], true);
+  save([...items, { id: crypto.randomUUID(), kind, label, payload, created_at: new Date().toISOString(), user }]);
 }
 
 export function discard(id: string) {

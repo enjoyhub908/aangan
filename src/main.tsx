@@ -4,15 +4,10 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import "@fontsource/spline-sans-mono/400.css";
 import "@fontsource/spline-sans-mono/500.css";
-import "@fontsource-variable/onest";
-import "@fontsource-variable/fraunces";
 import "./styles.css";
 import "./skin.css";
 import "./crystal.css";
 import "./holi.css";
-import "./refined.css";
-import { installDialogTracking } from "./lib/dialog";
-import { MotionProvider } from "./lib/motion";
 import { applyTheme } from "./lib/theme";
 import { registerServiceWorker } from "./lib/pwa";
 import { installTouchEffect } from "./lib/touch";
@@ -51,7 +46,6 @@ import { Atmosphere, GlassDefs, Logo, SkeletonApp } from "./components/ui";
 
 applyTheme();
 installTouchEffect();
-installDialogTracking();
 registerServiceWorker();
 // After a deploy, a tab that is still open can ask for a chunk file that no longer exists. Reload once
 // (at most every 30s, so it can never loop) to pick up the new build.
@@ -155,7 +149,6 @@ function App() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <MotionProvider>
     <GlassDefs />
     <Atmosphere />
     <BrowserRouter>
@@ -167,6 +160,5 @@ createRoot(document.getElementById("root")!).render(
         </DataProvider>
       </AuthProvider>
     </BrowserRouter>
-  </MotionProvider>
   </StrictMode>,
 );
