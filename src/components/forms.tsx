@@ -78,7 +78,9 @@ export function PaymentForm({ leaseId, period: initialPeriod, preset, onRecorded
   const live = useLive();
   const [period, setPeriod] = useState(initialPeriod ?? currentPeriod());
   const rows = useMemo(() => rentRows(period, live), [period, live]);
-  const [lease, setLease] = useState(leaseId ?? rows.find((r) => r.status !== "paid")?.lease.id ?? rows[0]?.lease.id ?? "");
+  const [lease, setLease] = useState(leaseId
+    ? (rows.some((r) => r.lease.id === leaseId) ? leaseId : "")
+    : rows.find((r) => r.status !== "paid")?.lease.id ?? rows[0]?.lease.id ?? "");
   const row = rows.find((r) => r.lease.id === lease);
   const [amount, setAmount] = useState<string>(preset?.amount ? String(preset.amount) : row ? String(row.balance || row.rent) : "");
   const [method, setMethod] = useState<Method>(preset?.method ?? "upi");
@@ -97,10 +99,18 @@ export function PaymentForm({ leaseId, period: initialPeriod, preset, onRecorded
     if (r && !preset?.amount) setAmount(String(r.balance || r.rent));
   }
 
+  function changePeriod(delta: number) {
+    const nextPeriod = shiftPeriod(period, delta);
+    const nextRow = rentRows(nextPeriod, live).find((r) => r.lease.id === lease);
+    setPeriod(nextPeriod);
+    if (!nextRow) setLease("");
+    if (!preset?.amount) setAmount(nextRow ? String(nextRow.balance || nextRow.rent) : "");
+  }
+
   function submit(e: FormEvent) {
     e.preventDefault();
     const amt = Number(amount);
-    if (!lease || !(amt > 0)) return;
+    if (!row || !(amt > 0)) return;
     const params = {
       p_lease_id: lease, p_amount: amt, p_period: period, p_method: method,
       p_reference: reference, p_note: note, p_paid_at: new Date(paidOn + "T12:00:00").toISOString(),
@@ -121,14 +131,14 @@ export function PaymentForm({ leaseId, period: initialPeriod, preset, onRecorded
     <form className="form" onSubmit={submit}>
       <Field label="For month">
         <div className="month-switch inline">
-          <button type="button" onClick={() => setPeriod(shiftPeriod(period, -1))} aria-label="Previous month"><span aria-hidden="true">‹</span></button>
+          <button type="button" onClick={() => changePeriod(-1)} aria-label="Previous month"><span aria-hidden="true">‹</span></button>
           <span>{periodLabel(period)}</span>
-          <button type="button" onClick={() => setPeriod(shiftPeriod(period, 1))} aria-label="Next month"><span aria-hidden="true">›</span></button>
+          <button type="button" onClick={() => changePeriod(1)} aria-label="Next month"><span aria-hidden="true">›</span></button>
         </div>
       </Field>
       <Field label="Tenant">
-        <select value={lease} onChange={(e) => pickLease(e.target.value)} required>
-          {rows.length === 0 && <option value="">No active leases this month</option>}
+        <select value={row ? lease : ""} onChange={(e) => pickLease(e.target.value)} required>
+          {!row && <option value="">{rows.length === 0 ? "No active leases this month" : "Choose a tenant"}</option>}
           {rows.map((r) => (
             <option key={r.lease.id} value={r.lease.id}>
               {r.tenant.name} · {r.property.name} {r.unit.label} — {r.status === "paid" ? "paid" : `${money(r.balance)} due`}
@@ -160,7 +170,7 @@ export function PaymentForm({ leaseId, period: initialPeriod, preset, onRecorded
         <input value={note} onChange={(e) => setNote(e.target.value)} />
       </Field>
       <FormError error={error} />
-      <button className="btn primary block" disabled={busy || !lease}>{busy ? "Recording…" : "Record payment & issue receipt"}</button>
+      <button className="btn primary block" disabled={busy || !row}>{busy ? "Recording…" : "Record payment & issue receipt"}</button>
     </form>
   );
 }
