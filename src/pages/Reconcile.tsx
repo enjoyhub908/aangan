@@ -1,6 +1,7 @@
+import { useAppReducedMotion } from "../lib/motion";
 import { useMemo, useRef, useState, type DragEvent } from "react";
 import { Link } from "react-router-dom";
-import { motion, useReducedMotion } from "motion/react";
+import { motion } from "motion/react";
 import {
   ArrowDownLeft, ArrowUpRight, Check, CheckCheck, EyeOff, FileSpreadsheet, Landmark, Link2, Sparkles, Trash2, Undo2, Upload,
 } from "lucide-react";
@@ -30,7 +31,7 @@ export default function ReconcilePage() {
   const d = useData();
   const canWrite = useCanWrite();
   const notify = useNotify();
-  const reduce = useReducedMotion();
+  const reduce = useAppReducedMotion();
   const lines = d.bankLines;
   const [filter, setFilter] = useState<Filter>("review");
   const [busy, setBusy] = useState<string | null>(null);

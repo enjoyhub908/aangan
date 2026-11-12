@@ -1,3 +1,5 @@
+import { useAppReducedMotion } from "../lib/motion";
+import { useDialog } from "../lib/dialog";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent as RMouseEvent, type PointerEvent as RPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
@@ -35,14 +37,11 @@ export function AlertHost() {
     current.resolve(ok);
     setQueue((q) => q.slice(1));
   };
+  const alertRef = useDialog(!!current, () => answer(false));
+  const reduce = useAppReducedMotion();
   useEffect(() => {
     if (!current) return;
     cancelRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.preventDefault(); answer(false); }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current]);
   return createPortal(
@@ -50,8 +49,8 @@ export function AlertHost() {
       {current && (
         <motion.div key="alert" className="alert-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.16 } }}
           transition={{ duration: 0.2 }} onMouseDown={(e) => e.target === e.currentTarget && answer(false)}>
-          <motion.div className="alert" role="alertdialog" aria-modal="true" aria-labelledby="ios-alert-title" aria-describedby={current.message ? "ios-alert-msg" : undefined}
-            initial={{ opacity: 0, scale: 1.18 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94, transition: { duration: 0.14 } }} transition={POP}>
+          <motion.div ref={alertRef} tabIndex={-1} className="alert" role="alertdialog" aria-modal="true" aria-labelledby="ios-alert-title" aria-describedby={current.message ? "ios-alert-msg" : undefined}
+            initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 1.06 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94, transition: { duration: 0.14 } }} transition={POP}>
             <h2 id="ios-alert-title">{current.title}</h2>
             {current.message && <p id="ios-alert-msg">{current.message}</p>}
             <div className="alert-actions">
@@ -75,16 +74,14 @@ export type MenuAction = { label: string; icon?: ReactNode; destructive?: boolea
 export function ContextMenu({ anchor, preview, actions, onClose }: { anchor: DOMRect | null; preview: ReactNode; actions: MenuAction[]; onClose: () => void }) {
   const first = useRef<HTMLButtonElement>(null);
   const [menuH, setMenuH] = useState(actions.length * 46 + 12);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const menuRef = useDialog(!!anchor, onClose);
   useLayoutEffect(() => { if (anchor && menuRef.current) setMenuH(menuRef.current.offsetHeight); }, [anchor]);
   useEffect(() => {
     if (!anchor) return;
     first.current?.focus({ preventScroll: true });
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     const onResize = () => onClose();
-    document.addEventListener("keydown", onKey);
     window.addEventListener("resize", onResize);
-    return () => { document.removeEventListener("keydown", onKey); window.removeEventListener("resize", onResize); };
+    return () => { window.removeEventListener("resize", onResize); };
   }, [anchor, onClose]);
 
   let layout: { top: number; left: number; width: number; menuTop: number; menuLeft: number; origin: string } | null = null;
@@ -112,7 +109,7 @@ export function ContextMenu({ anchor, preview, actions, onClose }: { anchor: DOM
             transition={POP}>
             {preview}
           </motion.div>
-          <motion.div ref={menuRef} className="ctx-menu" role="menu" style={{ top: layout.menuTop, left: layout.menuLeft, transformOrigin: layout.origin }}
+          <motion.div ref={menuRef} tabIndex={-1} className="ctx-menu" role="menu" style={{ top: layout.menuTop, left: layout.menuLeft, transformOrigin: layout.origin }}
             initial={{ opacity: 0, scale: 0.4 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.6, transition: { duration: 0.15 } }}
             transition={POP} onClick={(e) => e.stopPropagation()}>
             {actions.map((a, i) => (
